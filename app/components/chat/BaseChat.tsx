@@ -21,6 +21,8 @@ import type { ProviderInfo } from '~/utils/types';
 import { ExportChatButton } from '~/components/chat/chatExportAndImport/ExportChatButton';
 import { ImportButtons } from '~/components/chat/chatExportAndImport/ImportButtons';
 import { ExamplePrompts } from '~/components/chat/ExamplePrompts';
+import { useVoiceInput } from '~/lib/hooks/useVoiceInput';
+
 
 // @ts-ignore TODO: Introduce proper types
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -117,6 +119,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
     const [modelList, setModelList] = useState(MODEL_LIST);
     const [isModelSettingsCollapsed, setIsModelSettingsCollapsed] = useState(false);
+    const [shouldUpdateInput, setShouldUpdateInput] = useState(false);
+    const { isListening, toggleListening, transcription } = useVoiceInput(input, handleInputChange);
 
     useEffect(() => {
       // Load API keys from cookies on component mount
@@ -141,6 +145,16 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         setModelList(modelList);
       });
     }, []);
+
+
+    useEffect(() => {
+      // Only update the input if 'Stop Listening' was clicked
+      if (shouldUpdateInput && transcription && transcription !== input) {
+        handleInputChange?.({ target: { value: input + transcription } } as React.ChangeEvent<HTMLTextAreaElement>);
+        setShouldUpdateInput(false); // Reset the flag after updating
+      }
+    }, [transcription, shouldUpdateInput]);
+    
 
     const updateApiKey = (provider: string, key: string) => {
       try {
@@ -326,6 +340,18 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   </ClientOnly>
                   <div className="flex justify-between items-center text-sm p-4 pt-2">
                     <div className="flex gap-1 items-center">
+                   
+
+<IconButton
+              title={isListening ? 'Stop listening' : 'Start listening'}
+              onClick={toggleListening}
+            >
+              {isListening ? (
+                <svg className="i-svg-spinners:90-ring-with-bg text-xl animate-spin"></svg>
+              ) : (
+                <svg className="i-bolt:mic text-xl"></svg>
+              )}
+            </IconButton>
                       <IconButton
                         title="Enhance prompt"
                         disabled={input.length === 0 || enhancingPrompt}
